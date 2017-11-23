@@ -1,12 +1,11 @@
 # Access Watch Express Logger
 
-An Express middleware to log HTTP request to Access Watch.
-
+An Express.js middleware to log HTTP requests to Access Watch.
 
 ## Install
 
 ```
-npm --save access-watch-express-logger
+npm install --save access-watch-express-logger
 ```
 
 ## Usage
