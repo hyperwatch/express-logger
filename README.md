@@ -42,7 +42,7 @@ app.use(accessWatchExpressLogger('http', 'http://0.0.0.0:3000/input/log'))
 
 ### Using the Websocket protocol
 
-On Access Watch side, make sure you have an HTTP input that parse logs in the JSON standard format.
+On Access Watch side, make sure you have a WebSocket input that parse logs in the JSON standard format.
 
 ```
 const express = require('express')
