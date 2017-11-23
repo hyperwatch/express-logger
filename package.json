@@ -1,0 +1,22 @@
+{
+  "name": "access-watch-express-logger",
+  "version": "0.1.0",
+  "description": "HTTP request logger middleware targeting Access Watch",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard"
+  },
+  "author": {
+    "name": "François Hodierne",
+    "email": "francois@access.watch"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.17.1",
+    "syslog-client": "^1.1.1",
+    "ws": "^3.3.2"
+  },
+  "devDependencies": {
+    "standard": "^10.0.3"
+  }
+}
