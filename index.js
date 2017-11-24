@@ -56,7 +56,7 @@ module.exports = (transport = 'http', ...options) => {
   } else if (transport === 'syslog') {
     logger = syslogLogger(...options)
   } else {
-    throw new Error('No valid transport defined.')
+    throw new Error(`'${transport}' is not a valid transport.`)
   }
 
   return (req, res, next) => {
@@ -64,7 +64,7 @@ module.exports = (transport = 'http', ...options) => {
       const log = logFormat(req, res)
       logger(log)
     } catch (err) {
-      console.log(`Error while logging with ${transport} transport`, err)
+      console.log(`Error while logging with '${transport}' transport`, err)
     }
     next()
   }
