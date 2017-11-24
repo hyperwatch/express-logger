@@ -1,7 +1,11 @@
 {
   "name": "access-watch-express-logger",
   "version": "0.1.0",
-  "description": "An Express.js middleware to log HTTP requests to Access Watch.",
+  "description": "Express.js middleware to log HTTP requests to Access Watch.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/access-watch/access-watch-express-logger.git"
+  },
   "main": "index.js",
   "scripts": {
     "test": "standard"
