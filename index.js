@@ -34,14 +34,14 @@ function httpLogger (url, {timeout = 1000} = {}) {
 function webSocketLogger (address, protocols, options) {
   const WebSocket = require('ws')
 
-  let webSocketClient = new WebSocket(address, protocols, options)
+  let client = new WebSocket(address, protocols, options)
 
   return (log) => {
-    if (webSocketClient.readyState === WebSocket.CLOSED) {
-      webSocketClient = new WebSocket(address, protocols, options)
+    if (client.readyState === WebSocket.CLOSED) {
+      client = new WebSocket(address, protocols, options)
     }
-    if (webSocketClient.readyState === WebSocket.OPEN) {
-      webSocketClient.send(JSON.stringify(log))
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(log))
     }
   }
 }
