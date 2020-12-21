@@ -28,7 +28,11 @@ function httpLogger(url, { timeout = 1000 } = {}) {
 
   const client = axios.create({ timeout });
 
-  return (log) => client.post(url, log);
+  return (log) => {
+    client
+      .post(url, log)
+      .catch((err) => console.log(`httpLogger error: ${err.message}`));
+  };
 }
 
 function websocketLogger(address, protocols, options) {
@@ -43,7 +47,7 @@ function websocketLogger(address, protocols, options) {
   const createWebsocketClient = (address, protocols, options) => {
     const websocketClient = new WebSocket(address, protocols, options);
     websocketClient.on('error', (err) => {
-      console.log(`Websocket client error`, err);
+      console.log(`websocketLogger error: ${err.message}`);
       resetWebsocketClient();
     });
     return websocketClient;
