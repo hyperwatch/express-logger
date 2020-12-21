@@ -31,16 +31,31 @@ function httpLogger(url, { timeout = 1000 } = {}) {
   return (log) => client.post(url, log);
 }
 
-function webSocketLogger(address, protocols, options) {
+function websocketLogger(address, protocols, options) {
   const WebSocket = require('ws');
 
-  let client = new WebSocket(address, protocols, options);
+  let client;
+
+  const resetWebsocketClient = () => {
+    client = null;
+  };
+
+  const createWebsocketClient = (address, protocols, options) => {
+    const websocketClient = new WebSocket(address, protocols, options);
+    websocketClient.on('error', (err) => {
+      console.log(`Websocket client error`, err);
+      resetWebsocketClient();
+    });
+    return websocketClient;
+  };
+
+  client = createWebsocketClient(address, protocols, options);
 
   return (log) => {
-    if (client.readyState === WebSocket.CLOSED) {
-      client = new WebSocket(address, protocols, options);
+    if (!client || client.readyState === WebSocket.CLOSED) {
+      client = createWebsocketClient(address, protocols, options);
     }
-    if (client.readyState === WebSocket.OPEN) {
+    if (client && client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(log));
     }
   };
@@ -52,7 +67,7 @@ module.exports = (transport = 'http', ...options) => {
   if (transport === 'http') {
     logger = httpLogger(...options);
   } else if (transport === 'websocket') {
-    logger = webSocketLogger(...options);
+    logger = websocketLogger(...options);
   } else if (transport === 'syslog') {
     logger = syslogLogger(...options);
   } else {
