@@ -1,71 +1,71 @@
-function logFormat (req, res) {
+function logFormat(req, res) {
   return {
     request: {
       time: new Date().toISOString(),
       address: req.ip,
       method: req.method,
       url: req.originalUrl || req.url,
-      headers: req.headers
+      headers: req.headers,
     },
     response: {
-      status: res.statusCode
-    }
-  }
+      status: res.statusCode,
+    },
+  };
 }
 
-function syslogLogger (target, port, options = {}) {
-  options.port = port
+function syslogLogger(target, port, options = {}) {
+  options.port = port;
 
-  const syslogClient = require('syslog-client')
+  const syslogClient = require('syslog-client');
 
-  const client = syslogClient.createClient(target, options)
+  const client = syslogClient.createClient(target, options);
 
-  return log => client.log('access_watch: ' + JSON.stringify(log))
+  return (log) => client.log(`access_watch: ${JSON.stringify(log)}`);
 }
 
-function httpLogger (url, {timeout = 1000} = {}) {
-  const axios = require('axios')
+function httpLogger(url, { timeout = 1000 } = {}) {
+  const axios = require('axios');
 
-  const client = axios.create({timeout})
+  const client = axios.create({ timeout });
 
-  return log => client.post(url, log)
+  return (log) => client.post(url, log);
 }
 
-function webSocketLogger (address, protocols, options) {
-  const WebSocket = require('ws')
+function webSocketLogger(address, protocols, options) {
+  const WebSocket = require('ws');
 
-  let client = new WebSocket(address, protocols, options)
+  let client = new WebSocket(address, protocols, options);
 
   return (log) => {
     if (client.readyState === WebSocket.CLOSED) {
-      client = new WebSocket(address, protocols, options)
+      client = new WebSocket(address, protocols, options);
     }
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(log))
+      client.send(JSON.stringify(log));
     }
-  }
+  };
 }
 
 module.exports = (transport = 'http', ...options) => {
-  let logger
+  let logger;
 
   if (transport === 'http') {
-    logger = httpLogger(...options)
+    logger = httpLogger(...options);
   } else if (transport === 'websocket') {
-    logger = webSocketLogger(...options)
+    logger = webSocketLogger(...options);
   } else if (transport === 'syslog') {
-    logger = syslogLogger(...options)
+    logger = syslogLogger(...options);
   } else {
-    throw new Error(`'${transport}' is not a valid transport.`)
+    throw new Error(`'${transport}' is not a valid transport.`);
   }
 
   return (req, res, next) => {
     try {
-      const log = logFormat(req, res)
-      logger(log)
+      const log = logFormat(req, res);
+      logger(log);
     } catch (err) {
-      console.log(`Error while logging with '${transport}' transport`, err)
+      console.log(`Error while logging with '${transport}' transport`, err);
     }
-    next()
-  }
-}
+    next();
+  };
+};
