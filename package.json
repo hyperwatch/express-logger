@@ -1,11 +1,13 @@
 {
   "name": "@hyperwatch/express-logger",
-  "version": "3.0.0",
   "description": "Express.js middleware to log HTTP requests to Hyperwatch.",
+  "license": "Apache-2.0",
+  "author": "François Hodierne <francois@hodierne.net>",
   "repository": {
     "type": "git",
     "url": "https://github.com/hyperwatch/express-logger.git"
   },
+  "version": "3.0.0",
   "main": "index.js",
   "scripts": {
     "depcheck": "depcheck",
@@ -15,8 +17,6 @@
     "prettier:check": "npm run prettier -- --list-different",
     "prettier:write": "npm run prettier -- --write"
   },
-  "license": "Apache-2.0",
-  "author": "François Hodierne <francois@hodierne.net>",
   "dependencies": {
     "axios": "^0.21.0",
     "syslog-client": "^1.1.1",
