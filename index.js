@@ -79,16 +79,14 @@ module.exports = (transport = 'http', ...options) => {
   }
 
   return (req, res, next) => {
-    req.hyperwatch = req.hyperwatch || {};
-    req.hyperwatch.rawLog = createLog(req, res);
-    req.hyperwatch.startedAt = new Date();
+    const startedAt = new Date();
+    const rawLog = createLog(req, res);
 
     res.on('finish', () => {
       try {
-        const executionTime = new Date() - req.hyperwatch.startedAt;
-        req.hyperwatch.rawLog.response.status = res.statusCode;
-        req.hyperwatch.rawLog.executionTime = executionTime;
-        logger(req.hyperwatch.rawLog);
+        rawLog.response.status = res.statusCode;
+        rawLog.executionTime = new Date() - startedAt;
+        logger(rawLog);
       } catch (err) {
         console.log(`Error while logging with '${transport}' transport`, err);
       }
