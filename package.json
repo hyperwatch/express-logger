@@ -14,7 +14,7 @@
     "lint": "eslint '**/*.js'",
     "lint:fix": "eslint '**/*.js' --fix",
     "prettier": "prettier \"**/*.@(js|json|md|yml)\"",
-    "prettier:check": "npm run prettier -- --list-different",
+    "prettier:check": "npm run prettier",
     "prettier:write": "npm run prettier -- --write"
   },
   "dependencies": {
