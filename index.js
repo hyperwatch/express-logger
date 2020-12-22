@@ -1,4 +1,4 @@
-function logFormat(req, res) {
+function createLog(req, res) {
   return {
     request: {
       time: new Date().toISOString(),
@@ -79,12 +79,21 @@ module.exports = (transport = 'http', ...options) => {
   }
 
   return (req, res, next) => {
-    try {
-      const log = logFormat(req, res);
-      logger(log);
-    } catch (err) {
-      console.log(`Error while logging with '${transport}' transport`, err);
-    }
+    req.hyperwatch = req.hyperwatch || {};
+    req.hyperwatch.rawLog = createLog(req, res);
+    req.hyperwatch.startedAt = new Date();
+
+    res.on('finish', () => {
+      try {
+        const executionTime = new Date() - req.hyperwatch.startedAt;
+        req.hyperwatch.rawLog.response.status = res.statusCode;
+        req.hyperwatch.rawLog.executionTime = executionTime;
+        logger(req.hyperwatch.rawLog);
+      } catch (err) {
+        console.log(`Error while logging with '${transport}' transport`, err);
+      }
+    });
+
     next();
   };
 };
