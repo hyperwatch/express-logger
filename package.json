@@ -18,7 +18,7 @@
     "prettier:write": "npm run prettier -- --write"
   },
   "dependencies": {
-    "axios": "^0.21.0",
+    "axios": "^1.0.0",
     "syslog-client": "^1.1.1",
     "ws": "^8.2.2"
   },
