@@ -1,0 +1,27 @@
+# package-lock.json only resolves packages from the npm registry, over
+# HTTPS, with their integrity, under their own names
+name: Lockfile
+
+on:
+  push:
+    branches: [main]
+    paths: [package-lock.json]
+  pull_request:
+    branches: [main]
+    paths: [package-lock.json]
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm run lockfile:lint

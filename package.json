@@ -1,49 +1,71 @@
 {
   "name": "@hyperwatch/express-logger",
+  "version": "3.1.0",
   "description": "Express.js middleware to log HTTP requests to Hyperwatch.",
   "license": "Apache-2.0",
   "author": "François Hodierne <francois@hodierne.net>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hyperwatch/express-logger.git"
+    "url": "git+https://github.com/hyperwatch/express-logger.git"
   },
-  "version": "3.1.0",
   "main": "index.js",
+  "files": [
+    "types"
+  ],
   "scripts": {
     "depcheck": "depcheck",
-    "lint": "eslint '**/*.js'",
-    "lint:fix": "eslint '**/*.js' --fix",
-    "prettier": "prettier \"**/*.@(js|json|md|yml)\"",
-    "prettier:check": "npm run prettier -- --check",
-    "prettier:write": "npm run prettier -- --write"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "lockfile:lint": "lockfile-lint --path package-lock.json --type npm --allowed-hosts npm --validate-https --validate-integrity --validate-package-names",
+    "prepack": "npm run types",
+    "prepare": "husky",
+    "prettier": "prettier \"**/*.@(js|cjs|mjs|ts|json|md|yml)\"",
+    "prettier:check": "npm run prettier -- --list-different",
+    "prettier:write": "npm run prettier -- --write",
+    "test": "mocha --recursive",
+    "type:check": "tsc -p .",
+    "types": "node -e \"require('fs').rmSync('types', { recursive: true, force: true })\" && tsc -p tsconfig.types.json",
+    "types:test": "node scripts/test-types.js"
   },
+  "types": "types/index.d.ts",
   "dependencies": {
-    "axios": "^0.21.0",
     "syslog-client": "^1.1.1",
-    "ws": "^8.2.2"
+    "ws": "^8.23.0"
   },
   "devDependencies": {
-    "depcheck": "^1.3.1",
-    "eslint": "^7.16.0",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-node": "^11.1.0",
-    "husky": "^4.3.6",
-    "lint-staged": "^11.1.2",
-    "prettier": "^2.2.1",
-    "prettier-package-json": "^2.1.3"
+    "@eslint/js": "^10.0.1",
+    "@hyperwatch/hyperwatch": "^5.8.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/ws": "^8.18.2",
+    "depcheck": "^1.4.7",
+    "eslint": "^10.15.0",
+    "eslint-plugin-import-x": "^4.18.1",
+    "eslint-plugin-n": "^18.5.0",
+    "express": "^5.3.0",
+    "globals": "^17.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.2",
+    "lockfile-lint": "^5.1.0",
+    "mocha": "^12.0.3",
+    "prettier": "^3.10.1",
+    "prettier-package-json": "^2.8.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "depcheck": {
     "ignores": [
-      "prettier-package-json"
+      "prettier-package-json",
+      "@types/*"
+    ],
+    "ignorePatterns": [
+      "test/types"
     ]
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
-    "*.{js,json,md,yml}": [
+    "*.{js,cjs,mjs,ts,json,md,yml}": [
       "prettier --write"
     ],
     "package.json": [
