@@ -4,20 +4,23 @@ Releases are also on [GitHub](https://github.com/hyperwatch/express-logger/relea
 
 ## 4.0.0 (2026-11-24)
 
-### To sort: Breaking changes, Features, Fixes
+### Breaking changes
 
-- Modernize: Node 24, native fetch, tests, types, tooling and release as core ([#200](https://github.com/hyperwatch/express-logger/pull/200))
-- Upgrade to GitHub-native Dependabot
-- [Security] Bump postcss from 7.0.35 to 7.0.36
-- [Security] Bump glob-parent from 5.1.1 to 5.1.2
-- [Security] Bump hosted-git-info from 2.8.8 to 2.8.9
-- [Security] Bump lodash from 4.17.20 to 4.17.21
-- [Security] Bump axios from 0.21.0 to 0.21.1
-- fix prettier configuration
-- simpler middleware
-- setup basic CI
-- handle executionTime and statusCode
+- Requires Node.js 24 or later. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+- A log is sent once the response is sent, instead of when the request arrives: with the real `response.status`, and a new `executionTime` (milliseconds). A request whose response is never sent (the client went away) is no longer logged. The middleware no longer sets `req.hyperwatch`.
+- The HTTP transport uses Node.js's `fetch` instead of axios. Logs are still a `POST` of their JSON, given up after `timeout` milliseconds (1000 by default). ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+
+### Features
+
+- Type declarations: the middleware, its options (`HttpOptions`, `SyslogOptions`, `WebSocketOptions`) and the log (`Log`). No `@types` package is needed, with Express or without. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+- `createLog(req, res)` is exported: the log of a request, as Hyperwatch's own Express input creates it. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+
+### Fixes
+
+- A socket error of the syslog transport no longer crashes the application. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+- When Hyperwatch can't be reached, the failure is written to stderr once per kind (a refused connection, a timeout, an HTTP status…) instead of once per request, until a log goes through again. Errors go to `console.error` instead of `console.log`. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
+- The syslog transport no longer changes the `options` object it is given; the WebSocket transport reconnects on the next request once its connection is closed. ([#200](https://github.com/hyperwatch/express-logger/pull/200))
 
 ### Dependencies & tooling
 
-- Dependabot bumps of `eslint-plugin-import` (2.29.0), `prettier` (2.8.3), `ws` (8.12.0), `prettier-package-json` (2.8.0), `depcheck` (1.4.3), `axios` (0.21.4), `lint-staged` (11.1.2), `eslint` (7.32.0), `husky` (4.3.8). ([#99](https://github.com/hyperwatch/express-logger/pull/99), [#157](https://github.com/hyperwatch/express-logger/pull/157), [#160](https://github.com/hyperwatch/express-logger/pull/160), [#163](https://github.com/hyperwatch/express-logger/pull/163), [#167](https://github.com/hyperwatch/express-logger/pull/167))
+- `axios` is no longer a dependency; `ws` 8.23. Releases are made by GitHub Actions workflows, with npm provenance (`RELEASING.md`). ([#200](https://github.com/hyperwatch/express-logger/pull/200))
