@@ -35,6 +35,11 @@ function noteLine(subject) {
 // "build(deps-dev): bump x from 1 to 2 in /dir (#3)"
 const BUMP =
   /^(?:build\(deps(?:-dev)?\): )?[Bb]ump (\S+) from \S+ to (\S+?)(?: in \S+)?(?: \(#(\d+)\))?$/;
+// A grouped dependabot subject (.github/dependabot.yml): "Bump the npm group
+// with 3 updates (#4)", "build(deps): bump the npm group across 1 directory
+// with 3 updates (#4)"
+const GROUP_BUMP =
+  /^(?:build\(deps(?:-dev)?\): )?[Bb]ump the (\S+) group\b.*?(?: \(#(\d+)\))?$/;
 
 /**
  * A draft of the release notes from the commits since the last release
@@ -47,12 +52,19 @@ function draftNotes(subjects) {
   const toSort = [];
   const bumps = new Map();
   const bumpPrs = [];
+  const groups = new Set();
   for (const subject of subjects) {
     if (/^version \d+\.\d+\.\d+/.test(subject)) {
       continue;
     }
-    const bump = BUMP.exec(subject);
-    if (bump) {
+    const groupBump = GROUP_BUMP.exec(subject);
+    const bump = !groupBump && BUMP.exec(subject);
+    if (groupBump) {
+      groups.add(groupBump[1]);
+      if (groupBump[2]) {
+        bumpPrs.push(groupBump[2]);
+      }
+    } else if (bump) {
       // The latest version of each package: the newest commit comes first
       if (!bumps.has(bump[1])) {
         bumps.set(bump[1], bump[2]);
@@ -69,10 +81,13 @@ function draftNotes(subjects) {
     const heading = '### To sort: Breaking changes, Features, Fixes';
     sections.push(`${heading}\n\n${toSort.join('\n')}`);
   }
-  if (bumps.size) {
-    const packages = [...bumps]
-      .map(([name, version]) => `\`${name}\` (${version})`)
-      .join(', ');
+  if (bumps.size || groups.size) {
+    // The packages of grouped updates aren't in the subject: their pull
+    // requests list them
+    const packages = [
+      ...[...bumps].map(([name, version]) => `\`${name}\` (${version})`),
+      ...[...groups].map((group) => `the ${group} group`),
+    ].join(', ');
     const links = bumpPrs
       .sort((a, b) => Number(a) - Number(b))
       .map((pr) => `[#${pr}](${REPOSITORY}/pull/${pr})`)

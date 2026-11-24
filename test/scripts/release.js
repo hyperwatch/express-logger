@@ -43,6 +43,28 @@ describe('release', () => {
   });
 
   describe('draftNotes', () => {
+    it('folds grouped dependabot updates into the dependencies line', () => {
+      const notes = draftNotes([
+        'Bump the npm group with 3 updates (#212)',
+        'build(deps): bump the github-actions group across 1 directory with 2 updates (#210)',
+        'Bump ws from 8.23.0 to 8.24.0 (#205)',
+      ]);
+      assert.strictEqual(
+        notes,
+        [
+          '### Dependencies & tooling',
+          '',
+          `- Dependabot bumps of \`ws\` (8.24.0), the npm group, the github-actions group. (${[
+            205, 210, 212,
+          ]
+            .map(pull)
+            .join(', ')})`,
+        ].join('\n')
+      );
+    });
+  });
+
+  describe('draftNotes', () => {
     it('sorts what it can, and leaves the rest to sort', () => {
       const notes = draftNotes([
         'Drop axios for fetch (#749)',

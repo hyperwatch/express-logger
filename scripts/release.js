@@ -16,6 +16,9 @@
 //   node scripts/release.js notes X.Y.Z [file]
 //                                          The CHANGELOG.md section of
 //                                          X.Y.Z, for the GitHub release
+//   node scripts/release.js version-commit X.Y.Z
+//                                          The commit that set package.json's
+//                                          version to X.Y.Z
 //
 // It never commits, tags, pushes or publishes.
 const { execFileSync } = require('child_process');
@@ -47,22 +50,39 @@ function fail(message) {
   process.exit(1);
 }
 
+// The commit that set package.json's version to `version`: the oldest of
+// the latest run of commits with that version. Reading the version rather
+// than searching the diff for its line: reformatting package.json moves the
+// line without changing the version.
+function versionCommit(version) {
+  const commits = git('log', '--format=%H', '--', 'package.json')
+    .split('\n')
+    .filter(Boolean);
+  let found = null;
+  for (const commit of commits) {
+    let at;
+    try {
+      at = JSON.parse(git('show', `${commit}:package.json`)).version;
+    } catch (err) {
+      // Not a JSON file at that commit
+      at = null;
+    }
+    if (at === version) {
+      found = commit;
+    } else if (found) {
+      break;
+    }
+  }
+  return found;
+}
+
 // The latest release tag before HEAD. Releases before 4.0.0 weren't
 // tagged: then the commit that set the current version
 function lastTag() {
   try {
     return git('describe', '--tags', '--abbrev=0', '--match', 'v*', 'HEAD');
   } catch (err) {
-    const { version } = pkg();
-    const commit = git(
-      'log',
-      '-1',
-      '--format=%H',
-      '-G',
-      `"version": "${version.replace(/\./g, '\\.')}"`,
-      '--',
-      'package.json'
-    );
+    const commit = versionCommit(pkg().version);
     if (!commit) {
       throw err;
     }
@@ -197,10 +217,17 @@ const commands = {
   verify,
   pack: () => pack(args[0]),
   notes: () => notes(args[0], args[1]),
+  'version-commit': () => {
+    const commit = versionCommit(args[0]);
+    if (!commit) {
+      fail(`No commit sets the version to ${args[0]}`);
+    }
+    console.log(commit);
+  },
 };
 if (!commands[command]) {
   fail(
-    'Usage: node scripts/release.js changes | prepare X.Y.Z | verify | pack [tarball] | notes X.Y.Z [file]'
+    'Usage: node scripts/release.js changes | prepare X.Y.Z | verify | pack [tarball] | notes X.Y.Z [file] | version-commit X.Y.Z'
   );
 }
 commands[command]();

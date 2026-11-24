@@ -73,17 +73,19 @@ jobs:
             echo "$version is released"
             exit 0
           fi
+          # Released before the release workflows (3.1.0): on npm, but no
+          # tag, no GitHub release and no notes in CHANGELOG.md
+          if [ -n "$published" ] && [ -z "$tag" ] && [ -z "$release" ] && ! node scripts/release.js notes "$version" > /dev/null 2>&1; then
+            echo "$version is released (before the release workflows)"
+            exit 0
+          fi
           # The history, to find the commit that set the version
           if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
             git fetch --quiet --unshallow origin '+refs/heads/main:refs/remotes/origin/main'
           else
             git fetch --quiet origin '+refs/heads/main:refs/remotes/origin/main'
           fi
-          bump=$(git log -1 --format=%H -G "\"version\": \"${version//./\\.}\"" -- package.json)
-          if [ "$(git show "$bump:package.json" | node -p "JSON.parse(require('fs').readFileSync(0)).version")" != "$version" ]; then
-            echo "No commit sets the version to $version"
-            exit 1
-          fi
+          bump=$(node scripts/release.js version-commit "$version")
           # The release is the last commit its pull request put on main, the
           # notes rewritten after the bump included, whatever the merge
           # method (squash, rebase or merge commit); the bump itself when it
