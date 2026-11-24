@@ -5,13 +5,46 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Run by the prepare workflow on the branch it pushes: a push made with the
+  # workflow's token starts no CI run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its earlier runs; never on main
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [24.x, 26.x]
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
   lint:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
       - run: npm ci
       - run: npm run lint
 
@@ -19,7 +52,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
       - run: npm ci
       - run: npm run prettier:check
 
@@ -27,6 +64,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
       - run: npm ci
       - run: npm run depcheck
+
+  types:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      # The sources (JSDoc), then the declarations the package publishes,
+      # installed from the packed package with its dependencies only
+      - run: npm run type:check
+      - run: npm run types:test
+
+  # A pull request that changes the version (release-prepare.yml) has its
+  # release notes ready: what release.yml checks first
+  release-notes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Notes of an unreleased version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$version")" ]; then
+            echo "$version is released"
+          elif [ "$(npm view "@hyperwatch/express-logger@$version" version 2> /dev/null)" = "$version" ]; then
+            # Released before the release workflows: not tagged
+            echo "$version is released"
+          else
+            node scripts/release.js verify
+          fi
