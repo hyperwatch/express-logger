@@ -5,7 +5,11 @@ import http = require('http');
 
 import express = require('express');
 import expressLogger = require('@hyperwatch/express-logger');
-import type { Log, Middleware } from '@hyperwatch/express-logger';
+import type {
+  HyperwatchRequest,
+  Log,
+  Middleware,
+} from '@hyperwatch/express-logger';
 
 const app = express();
 
@@ -33,6 +37,19 @@ const log: Log = expressLogger.createLog(
 const status: number = log.response.status;
 const time: string = log.request.time;
 console.log(status, time, log.executionTime);
+
+// The route, read from Express, or set by the application
+const path: string | undefined = log.route?.path;
+const name: string | undefined = log.route?.name;
+console.log(path, name);
+app.get('/v1/:slug.json', (req, res) => {
+  const { hyperwatch } = req as typeof req & { hyperwatch: HyperwatchRequest };
+  hyperwatch.route = { name: 'collective.json' };
+  hyperwatch.route = null;
+  // @ts-expect-error a route is a map, not its path
+  hyperwatch.route = '/v1/:slug.json';
+  res.send('ok');
+});
 
 // @ts-expect-error an unknown transport
 expressLogger('smtp', 'x');

@@ -18,12 +18,30 @@
  * @property {number} response.status Set again when the response is sent
  * @property {number} [executionTime] Milliseconds from the request to the
  *   end of the response
+ * @property {Route} [route] The route the request matched, when one did
+ */
+
+/**
+ * The route a request matched, as Hyperwatch's Express input sets it
+ * (`route` in docs/log.md of @hyperwatch/hyperwatch)
+ * @typedef {object} Route
+ * @property {string} path As declared in the application (OpenTelemetry's
+ *   `http.route`): `req.baseUrl` followed by the Express route's path
+ * @property {string} [name] Only from the application
+ */
+
+/**
+ * What the application can set on a request, as `req.hyperwatch`, before
+ * the response ends, as with Hyperwatch's Express input: the fields of
+ * `route` replace the ones read from Express (`null`: no route)
+ * @typedef {object} HyperwatchRequest
+ * @property {{ path?: string | null, name?: string | null } | null} [route]
  */
 
 /**
  * The request as the middleware reads it: an Express request, or a plain
  * Node.js one
- * @typedef {import('http').IncomingMessage & { ip?: string, originalUrl?: string }} Request
+ * @typedef {import('http').IncomingMessage & { ip?: string, originalUrl?: string, baseUrl?: string, route?: unknown, hyperwatch?: HyperwatchRequest }} Request
  */
 
 /**
@@ -80,6 +98,70 @@ function createLog(req, res) {
       status: res.statusCode,
     },
   };
+}
+
+/**
+ * A path a route is declared with, as written in the application: a string
+ * as is, a regular expression as its literal (`/^\/(?<slug>[^/]+)$/i`)
+ * @param {unknown} path
+ * @returns {string | undefined}
+ */
+function pathText(path) {
+  if (typeof path === 'string') {
+    return path;
+  }
+  if (path instanceof RegExp) {
+    return String(path);
+  }
+  return undefined;
+}
+
+/**
+ * The route of a request, as Hyperwatch's Express input reads it: `path`,
+ * the path of the Express route that handled it as written in the
+ * application, after its router's (`req.baseUrl`), the paths of an array
+ * joined with `,`. The fields the application set in `req.hyperwatch.route`
+ * win (`name` comes only from there). No route without a `path`.
+ * @param {Request} req
+ * @returns {Route | undefined}
+ */
+function routeOf(req) {
+  const own = req.hyperwatch && req.hyperwatch.route;
+  if (own === null) {
+    return undefined;
+  }
+  const expressRoute = /** @type {{ path?: unknown } | undefined} */ (
+    req.route
+  );
+
+  /** @type {{ path?: unknown, name?: unknown }} */
+  const fields = {};
+  if (expressRoute) {
+    const { path } = expressRoute;
+    const text = Array.isArray(path)
+      ? path.map((p) => pathText(p) || '').join(',')
+      : pathText(path);
+    if (text !== undefined) {
+      fields.path = `${req.baseUrl || ''}${text}`;
+    }
+  }
+  if (own && typeof own === 'object') {
+    for (const key of /** @type {const} */ (['path', 'name'])) {
+      if (own[key] !== undefined) {
+        fields[key] = own[key];
+      }
+    }
+  }
+
+  if (!fields.path) {
+    return undefined;
+  }
+  /** @type {Route} */
+  const route = { path: String(fields.path) };
+  if (fields.name) {
+    route.name = String(fields.name);
+  }
+  return route;
 }
 
 /**
@@ -263,11 +345,22 @@ function expressLogger(transport = 'http', ...options) {
   return (req, res, next) => {
     const startedAt = Date.now();
     const log = createLog(req, res);
+    // Where the application sets the route, as with Hyperwatch's Express
+    // input
+    req.hyperwatch = req.hyperwatch || {};
 
     res.on('finish', () => {
       try {
         log.response.status = res.statusCode;
         log.executionTime = Date.now() - startedAt;
+        try {
+          const route = routeOf(req);
+          if (route) {
+            log.route = route;
+          }
+        } catch {
+          // What can't be read is left out: the log is still sent
+        }
         send(log);
       } catch (err) {
         failures.report(err);

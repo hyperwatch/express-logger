@@ -345,6 +345,130 @@ describe('express-logger', () => {
     });
   });
 
+  describe('route', () => {
+    let receiver;
+    let logs;
+    let server;
+    let appUrl;
+
+    before(async () => {
+      logs = logQueue();
+      receiver = http.createServer((req, res) => {
+        let body = '';
+        req.on('data', (chunk) => (body += chunk));
+        req.on('end', () => {
+          logs.push(JSON.parse(body));
+          res.end('Ok');
+        });
+      });
+      receiver.listen(0, '127.0.0.1');
+      await once(receiver, 'listening');
+
+      const app = express();
+      app.use(
+        expressLogger(
+          'http',
+          `http://127.0.0.1:${receiver.address().port}/input/log`
+        )
+      );
+      const ok = (req, res) => res.send('ok');
+      app.get('/v1/:collectiveSlug.json', ok);
+      app.get(/^\/(?<slug>[^/]+)\/members\.(?<format>json|csv)$/i, ok);
+      app.get(['/a/:id', /^\/b\/(?<id>\d+)$/], ok);
+      app.get(
+        /^\/own\/(?<id>\d+)$/,
+        (req, res, next) => {
+          req.hyperwatch.route = { path: '/own/:id', name: 'own.show' };
+          next();
+        },
+        ok
+      );
+      app.get('/named/:id', (req, res) => {
+        req.hyperwatch.route = { name: 'named.show' };
+        res.send('ok');
+      });
+      app.get('/none', (req, res) => {
+        req.hyperwatch.route = null;
+        res.send('ok');
+      });
+      const router = express.Router();
+      router.get('/users/:id', (req, res) => res.status(404).send('missing'));
+      app.use('/api', router);
+      app.get('/items/:id', (req, res, next) => next());
+      app.get('/cleared/:id', (req, res, next) => next());
+      app.use((req, res) => {
+        if (req.path.startsWith('/cleared/')) {
+          req.hyperwatch.route = null;
+        }
+        res.status(404).send('Not found');
+      });
+      server = app.listen(0, '127.0.0.1');
+      await once(server, 'listening');
+      appUrl = `http://127.0.0.1:${server.address().port}`;
+    });
+
+    after(() => {
+      server.close();
+      receiver.closeAllConnections();
+      receiver.close();
+    });
+
+    async function routeOf(path) {
+      await (await fetch(`${appUrl}${path}`)).text();
+      return (await logs.next()).route;
+    }
+
+    it('sets the path of a string route, and no name', async () => {
+      assert.deepStrictEqual(await routeOf('/v1/babel.json?x=1'), {
+        path: '/v1/:collectiveSlug.json',
+      });
+    });
+
+    it('sets a regular expression as written', async () => {
+      assert.deepStrictEqual(await routeOf('/babel/members.csv'), {
+        path: String(/^\/(?<slug>[^/]+)\/members\.(?<format>json|csv)$/i),
+      });
+    });
+
+    it('joins the paths of an array', async () => {
+      assert.deepStrictEqual(await routeOf('/b/1'), {
+        path: '/a/:id,/^\\/b\\/(?<id>\\d+)$/',
+      });
+    });
+
+    it('puts the router path first, even on a 404 the route sent', async () => {
+      assert.deepStrictEqual(await routeOf('/api/users/1'), {
+        path: '/api/users/:id',
+      });
+      // req.baseUrl is what was requested, not the mount pattern
+      assert.deepStrictEqual(await routeOf('/API/users/1'), {
+        path: '/API/users/:id',
+      });
+    });
+
+    it('sets no route when no route matched', async () => {
+      assert.strictEqual(await routeOf('/nothing/here'), undefined);
+    });
+
+    it("prefers the application's fields", async () => {
+      assert.deepStrictEqual(await routeOf('/own/1'), {
+        path: '/own/:id',
+        name: 'own.show',
+      });
+      assert.deepStrictEqual(await routeOf('/named/1'), {
+        path: '/named/:id',
+        name: 'named.show',
+      });
+      assert.strictEqual(await routeOf('/none'), undefined);
+    });
+
+    it('keeps the last route of a request handed on with next()', async () => {
+      // As Hyperwatch's Express input: Express never clears req.route
+      assert.deepStrictEqual(await routeOf('/items/9'), { path: '/items/:id' });
+      assert.strictEqual(await routeOf('/cleared/9'), undefined);
+    });
+  });
+
   describe('createLog', () => {
     // The same request, as Express and Hyperwatch's Express input see it
     const req = {
